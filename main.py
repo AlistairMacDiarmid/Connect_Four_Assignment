@@ -1,26 +1,28 @@
 import os
-import random
 import numpy as np
 from rich.align import Align
 from rich.console import Console, Group
 from rich.panel import Panel
+from Player import Player
+from game_logic import create_board, check_win
 
-# Color palette reference:
+
+
 # https://coolors.co/palette/ffe5ec-ffc2d1-ffb3c6-ff8fab-fb6f92
 
-# Initialise Rich console for styled terminal output
+
 console = Console(force_terminal=True)
 
 
 def intro_text():
-  """Displays the welcome/intro banner."""
-  # Format and centre the title and game subtitle
+
+
   centered_message = Align.center(
       "[bold cyan]    CONNECT 4![/bold cyan]\n[dim]Player vs Player\nPlayer vs"
       " Computer[/dim]"
   )
 
-  # Display the intro panel
+
   console.print(
       Panel(
           centered_message,
@@ -32,14 +34,15 @@ def intro_text():
 
 
 def get_game_mode():
-  """Prompts the user to select a game mode and returns the choice (1 or 2)."""
+
+
   prompt_message = Align.center(
       "[#fdc500]Select Game Mode:[/#fdc500]\n\n"
       "[green][1][/green] Player vs Player\n"
       "[blue][2][/blue] Player vs Computer"
   )
 
-  # Display menu panel
+
   console.print(
       Panel(
           prompt_message,
@@ -51,7 +54,7 @@ def get_game_mode():
 
   console.print()
 
-  # Prompt until a valid choice is entered
+
   while True:
       try:
           console.print("[bold magenta]enter your game mode choice (1 or 2): [/bold magenta]", end="")
@@ -73,7 +76,7 @@ def get_game_mode():
 
 
 def get_board_dimensions():
-  """Prompts the user for valid board dimensions (min 6 rows, min 7 cols)."""
+
   board_prompt_msg = Align.center(
       "[#fdc500]what size of board do u wish to play with?[/#fdc500]\n\n"
       "[dim](standard Connect 4 is 6 rows by 7 columns (minimum size is 6x7)[/dim]"
@@ -91,7 +94,7 @@ def get_board_dimensions():
 
   console.print()
 
-  # Get and validate rows (min 6)
+
   while True:
     try:
       console.print(
@@ -108,7 +111,7 @@ def get_board_dimensions():
           "[bold red]invalid input! please enter a valid number.[/bold red]\n"
       )
 
-  # Get and validate columns (min 7)
+
   while True:
     try:
       console.print(
@@ -128,34 +131,35 @@ def get_board_dimensions():
   return rows, cols
 
 
-def build_board(rows: int, cols: int):
-    """
-    Initialises and renders the game board with randomly blocked cells.
-    """
-
-    # initialise board with '#' placeholder
-    board = np.full((rows, cols), "#")
-
-    # Add randomly blocked cells to the board
-    board = random_cell_blocking(board, block_char="X")
-
-    # clear terminal
+def display_board(board):
     os.system('cls' if os.name == 'nt' else 'clear')
 
+    rows, cols = board.shape
+
     info_text = Align.center(
-        "[bold green]Connect 4 board initialised![/bold green]\n"
         f"dimensions: [bold cyan]{rows} rows[/bold cyan] × [bold cyan]{cols} columns[/bold cyan]\n"
     )
 
-    # Format each row into a centered string for display
     grid_rows = []
     for row in range(rows):
-        row_str = " ".join(f"[cyan]{board[row, col]}[/cyan]" for col in range(cols))
+        formatted_cells = []
+        for col in range(cols):
+            cell = board[row, col]
+
+            if cell == "X":
+                formatted_cells.append(f"[bold medium_purple1 ]{cell}[/bold medium_purple1]")
+            elif cell == "O":
+                formatted_cells.append(f"[bold bright_yellow]{cell}[/bold bright_yellow]")
+            elif cell == "!":
+                formatted_cells.append(f"[bold red]{cell}[/bold red]")
+            else:
+                formatted_cells.append(f"[dim cyan]{cell}[/dim cyan]")
+
+        row_str = " ".join(formatted_cells)
         grid_rows.append(Align.center(row_str))
 
     board_panel_content = Group(info_text, "", *grid_rows)
 
-    # Print board inside a styled panel
     console.print(
         Panel(
             board_panel_content,
@@ -165,65 +169,55 @@ def build_board(rows: int, cols: int):
         )
     )
 
-    return board
-
-
-def random_cell_blocking(board, block_char="X"):
-    """
-    Randomly blocks up to 10% of cells on the board using block_char.
-    """
-
-    rows, cols = board.shape
-    total_cells = rows * cols
-
-    # Pick a random percentage between 1% and 10%
-    cell_block_percent = random.randint(1, 10) / 100
-    max_blocked = int(total_cells * cell_block_percent)
-
-    # find all empty '#' cells
-    empty_cells = list(zip(*np.where(board == "#")))
-
-    if not empty_cells:
-        return board
-
-    #determine how many cells to block (at least 1, up to max_blocked)
-    upper_bound = min(max_blocked + 1, len(empty_cells) + 1)
-    if upper_bound <= 1:
-        return board
-
-    num_to_block = np.random.randint(1, upper_bound)
-
-    #randomly pick coordinates to block
-    chosen_indices = np.random.choice(
-        len(empty_cells), size=num_to_block, replace=False
-    )
-
-    # Place the blocking character in the chosen cells
-    for idx in chosen_indices:
-        r, c = empty_cells[idx]
-        board[r, c] = block_char
-
-    return board
-
 
 def main():
-  """
-  main entry point to run the Connect 4 application.
-  """
+    """
+    main entry point to run the Connect 4 application.
+    """
+    intro_text()
+    mode = get_game_mode()
 
-  # show title screen
-  intro_text()
+    if mode == 1:
+        console.print("\n[bold green]starting player vs player mode...[/bold green]")
+        rows, cols = get_board_dimensions()
 
-  # select game mode
-  mode = get_game_mode()
 
-  if mode == 1:
-    console.print("\n[bold green]starting player vs player mode...[/bold green]")
-    rows, cols = get_board_dimensions()
-    board = build_board(rows, cols)
-  else:
-    console.print("\n[bold green]starting player vs computer mode...[/bold green]")
+        board = create_board(rows, cols)
+        display_board(board)
+
+
+        player1 = Player(name="Player 1", game_piece="X")
+        player2 = Player(name="Player 2", game_piece="O")
+
+        max_possible_moves = (rows * cols) - int(np.count_nonzero(board == "!"))
+        total_moves = 0
+        current_player = player1
+        game_over = False
+
+        while not game_over:
+            current_player.play(board)
+            total_moves += 1
+
+            display_board(board)
+
+            if total_moves >= 7:
+                if check_win(board, current_player.game_piece):
+                    console.print(f"\n[bold green]{current_player.name} wins![/bold green]")
+                    game_over = True
+                    break
+
+            if total_moves >= max_possible_moves:
+                console.print("\n[bold red]it's a draw![/bold red]")
+                game_over = True
+                break
+
+            #switch turns
+            current_player = player2 if current_player == player1 else player1
+
+    else:
+        console.print("\n[bold green]starting player vs computer mode...[/bold green]")
 
 
 if __name__ == "__main__":
-  main()
+    main()
+
