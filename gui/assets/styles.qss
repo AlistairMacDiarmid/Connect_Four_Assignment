@@ -1,0 +1,127 @@
+/* global application stylesheet matching the rich cli colour palette */
+
+QMainWindow, QWidget {
+    background-color: #12131a;
+    color: #64dfdf;
+    font-family: "VT323", "Consolas", monospace;
+    font-size: 24px;
+}
+
+QLabel {
+    background-color: transparent;
+    color: #64dfdf;
+}
+
+QLabel#title_label {
+    font-family: "Geist Pixel", "VT323", monospace;
+    font-size: 64px;
+    font-weight: bold;
+    color: #80ffdb;
+    padding: 10px;
+}
+
+QLabel#subtitle_label {
+    font-size: 28px;
+    color: #ff8fab;
+    padding-bottom: 16px;
+}
+
+QLabel#header_label {
+    font-family: "Geist Pixel", "VT323", monospace;
+    font-size: 42px;
+    font-weight: bold;
+    color: #80ffdb;
+    padding-bottom: 12px;
+}
+
+QPushButton {
+    background-color: #1c1e2a;
+    color: #80ffdb;
+    border: 2px solid #ff8fab;
+    border-radius: 8px;
+    padding: 10px 28px;
+    min-width: 220px;
+    font-family: "VT323", "Consolas", monospace;
+    font-size: 26px;
+}
+
+QPushButton:hover {
+    background-color: #ff8fab;
+    color: #12131a;
+}
+
+QPushButton:pressed {
+    background-color: #80ffdb;
+    border-color: #80ffdb;
+    color: #12131a;
+}
+
+QPushButton:disabled {
+    background-color: #12131a;
+    border-color: #5c6378;
+    color: #5c6378;
+}
+
+QGroupBox {
+    background-color: #1c1e2a;
+    border: 2px solid #ff8fab;
+    border-radius: 10px;
+    margin-top: 18px;
+    padding: 20px 28px 16px 28px;
+    min-width: 460px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top center;
+    padding: 0 10px;
+    color: #ff8fab;
+    font-size: 26px;
+}
+
+QGroupBox:disabled {
+    border-color: #5c6378;
+    color: #5c6378;
+}
+
+QGroupBox:disabled::title {
+    color: #5c6378;
+}
+
+QSpinBox {
+    background-color: #12131a;
+    color: #80ffdb;
+    border: 2px solid #ff8fab;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 24px;
+}
+
+QCheckBox {
+    background-color: transparent;
+    color: #64dfdf;
+    spacing: 12px;
+    font-size: 24px;
+    padding: 4px 0;
+}
+
+QCheckBox:disabled {
+    color: #5c6378;
+}
+
+QCheckBox::indicator {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ff8fab;
+    border-radius: 4px;
+    background-color: #12131a;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #ff8fab;
+}
+
+QCheckBox::indicator:disabled {
+    border-color: #5c6378;
+    background-color: #12131a;
+}
