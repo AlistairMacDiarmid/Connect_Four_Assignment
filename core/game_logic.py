@@ -3,8 +3,11 @@ game logic for connect 4
 handles mathematical grid operations, random cell blocking, gravity-based piece dropping, and win checks.
 """
 
+import logging
 import random
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def create_board(rows: int, cols: int) -> np.ndarray:
@@ -18,6 +21,8 @@ def create_board(rows: int, cols: int) -> np.ndarray:
     """
     board = np.full((rows, cols), "#")
     board = random_cell_blocking(board, block_char="!")
+    blocked_count = int(np.sum(board == "!"))
+    logger.info("Initialized board of size %dx%d with %d blocked cell(s)", rows, cols, blocked_count)
     return board
 
 
@@ -133,7 +138,9 @@ def drop_piece(board: np.ndarray, piece: str, col_index: int) -> bool:
     for r in range(rows - 1, -1, -1):
         if board[r, col_index] == "#":
             board[r, col_index] = piece
+            logger.debug("Dropped piece '%s' at row %d, col %d", piece, r, col_index)
             return True
 
     # if no space is available, return false
+    logger.warning("Column %d is full; cannot drop piece '%s'", col_index + 1, piece)
     return False

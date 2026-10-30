@@ -17,9 +17,12 @@ from rich.panel import Panel
 from core.player import Player
 from core.ai_agent import AIAgent
 from core.game_logic import check_win, create_board
+import logging
+from core.logger import setup_log
+
 
 console = Console(force_terminal=True)
-
+logger = logging.getLogger(__name__)
 
 def intro_text() -> None:
     """
@@ -316,6 +319,7 @@ def run_game_loop(
         # check win condition once minimum 7 moves have occurred
         if total_moves >= 7:
             if check_win(board, current_player.game_piece):
+                logger.info("Game Over: %s won the game in %d total moves", player_name, total_moves)
                 display_board(board, last_move=last_move_txt)
                 console.print(
                     f"\n[bold cyan]{player_name} wins![/bold cyan]"
@@ -325,6 +329,7 @@ def run_game_loop(
 
         # check draw condition if all playable cells are filled
         if total_moves >= max_possible_moves:
+            logger.info("Game Over: Game ended in a draw after %d total moves", total_moves)
             display_board(board, last_move=last_move_txt)
             console.print("\n[cyan]it's a draw![/cyan]")
             game_over = True
@@ -344,17 +349,23 @@ def main() -> None:
 
     :return: None
     """
+    setup_log()
+    logger.info("NEW CONNECT FOUR SESSION STARTED")
     intro_text()
     mode = get_game_mode()
+    mode_name = "Player vs Player" if mode == 1 else "Player vs Computer"
+    logger.info("Selected game mode: %s", mode_name)
 
     ai_difficulty = "medium"
     if mode == 2:
         ai_difficulty = get_ai_difficulty()
+        logger.info("Selected AI difficulty: %s", ai_difficulty)
 
     rows, cols = get_board_dimensions()
+    logger.info("Board dimensions chosen: %dx%d", rows, cols)
     board = create_board(rows, cols)
 
-    # initialize players based on chosen game mode
+    # initialise players based on chosen game mode
     if mode == 1:
         player1 = Player(name="player 1", game_piece="X")
         player2 = Player(name="player 2", game_piece="O")

@@ -5,14 +5,17 @@ implements computer player logic using random move selection and monte carlo tre
 
 from __future__ import annotations
 
+import logging
 import math
 import random
+import time
 from typing import List, Optional
 
 import numpy as np
 from rich.console import Console
 from core.game_logic import drop_piece, check_win
 
+logger = logging.getLogger(__name__)
 console = Console(force_terminal=True)
 
 
@@ -189,20 +192,27 @@ class AIAgent:
         """
         valid_locations = get_valid_locations(board)
         if not valid_locations:
+            logger.warning("AI '%s' found no valid locations available", self.name)
             return None
 
         console.print(
             f"\n[bold bright_yellow]{self.name.lower()}'s turn ({self.game_piece})[/bold bright_yellow] [cyan]– thinking...[/cyan]"
         )
 
+        time.sleep(2)
+
         if self.difficulty == "easy":
             # easy mode just chooses a random valid column to play its piece
             col = int(random.choice(valid_locations))
+            logger.info("AI '%s' (easy) selected random column %d", self.name, col + 1)
         else:
             # medium mode runs monte carlo tree search
+            logger.info("AI '%s' (%s) running MCTS with %d iterations", self.name, self.difficulty, self.iterations)
             col = self.mcts_search(board)
+            logger.info("AI '%s' selected column %d via MCTS", self.name, col + 1)
 
         drop_piece(board, self.game_piece, col)
+        logger.info("AI '%s' placed piece '%s' in column %d", self.name, self.game_piece, col + 1)
         return col
 
     def mcts_search(self, board: np.ndarray) -> int:
