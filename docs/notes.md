@@ -72,6 +72,9 @@ For Monte Carlo Tree Search Implementation:
 
 # Hypothesis Testing
 
+https://hypothesis.readthedocs.io/en/latest/tutorial/builtin-strategies.html
+
+
 
 
 
