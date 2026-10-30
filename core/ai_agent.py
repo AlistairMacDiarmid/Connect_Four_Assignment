@@ -11,8 +11,7 @@ from typing import List, Optional
 
 import numpy as np
 from rich.console import Console
-
-from game_logic import drop_piece, check_win
+from core.game_logic import drop_piece, check_win
 
 console = Console(force_terminal=True)
 

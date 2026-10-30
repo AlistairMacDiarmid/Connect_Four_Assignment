@@ -5,7 +5,7 @@ defines the human player class. handles terminal i/o, input validation and game 
 
 import numpy as np
 from rich.console import Console
-from game_logic import drop_piece
+from core.game_logic import drop_piece
 
 console = Console(force_terminal=True)
 
