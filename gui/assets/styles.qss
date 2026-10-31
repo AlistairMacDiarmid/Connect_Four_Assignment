@@ -34,6 +34,20 @@ QLabel#header_label {
     padding-bottom: 12px;
 }
 
+QLabel#key_header {
+    font-family: "Geist Pixel", "VT323", monospace;
+    font-size: 42px;
+    font-weight: bold;
+    color: #80ffdb;
+    padding-bottom: 12px;
+}
+
+QLabel#blocked_cell_label {
+    font-family:"VT323", monospace;
+    font-size: 32px;
+
+}
+
 QPushButton {
     background-color: #1c1e2a;
     color: #80ffdb;
@@ -43,6 +57,13 @@ QPushButton {
     min-width: 220px;
     font-family: "VT323", "Consolas", monospace;
     font-size: 26px;
+}
+
+QPushButton#board_cell {
+    min-width: 0px;
+    min-height: 0px;
+    padding: 0px;
+    border-style: none;
 }
 
 QPushButton:hover {

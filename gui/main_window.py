@@ -10,6 +10,8 @@ from PyQt6 import QtCore
 from PyQt6.QtWidgets import QMainWindow, QStackedWidget, QApplication
 from PyQt6.QtGui import QIcon, QFontDatabase
 
+from core.game_logic import create_board
+from gui.views.game_screen import GameScreen
 from gui.views.title_screen import TitleScreen
 from gui.views.gamemode_select_screen import GameModeSelectScreen
 from gui.views.game_setup_screen import SetupScreen
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
 class MainWindow(QMainWindow):
     """
     top-level application window hosting a qstackedwidget to switch between views.
-    handles navigation signals between the title, mode selection, and game setup screens.
+    handles navigation signals between the title, mode selection, game setup, and game board screens.
     """
 
     def __init__(self) -> None:
@@ -29,12 +31,13 @@ class MainWindow(QMainWindow):
         """
         super().__init__()
         self.setWindowTitle("CONNECT FOUR")
-        self.showMaximized()
 
-        # set window icon from bundled svg asset if present
-        icon_path = Path(__file__).parent / "img" / "noun_connectfour_7354744.svg"
-        if icon_path.exists():
-            self.setWindowIcon(QIcon(str(icon_path)))
+        # constrain maximum window size to a single monitor's geometry so it never spills onto a second screen
+        screen = QApplication.primaryScreen()
+        if screen is not None:
+            self.setMaximumSize(screen.geometry().size())
+
+        self.showFullScreen()
 
         # load custom bundled fonts and external .qss stylesheet
         self._load_custom_fonts()
@@ -51,14 +54,18 @@ class MainWindow(QMainWindow):
         self.title_screen: TitleScreen = TitleScreen()
         self.mode_screen: GameModeSelectScreen = GameModeSelectScreen()
         self.setup_screen: SetupScreen = SetupScreen()
+        self.game_screen: GameScreen = GameScreen()
 
         # register screens in the stacked widget
         self.stack.addWidget(self.title_screen)
         self.stack.addWidget(self.mode_screen)
         self.stack.addWidget(self.setup_screen)
+        self.stack.addWidget(self.game_screen)
 
         self.connect_signals()
-        logger.info("MainWindow initialised with title, mode select, and setup screens")
+        logger.info(
+            "MainWindow initialised with title, mode select, setup, and game screens"
+        )
 
     def _load_custom_fonts(self) -> None:
         """
@@ -100,6 +107,9 @@ class MainWindow(QMainWindow):
         self.setup_screen.back_btn_clicked.connect(self.on_setup_back_clicked)
         self.setup_screen.start_game_clicked.connect(self.on_start_game)
 
+        # game screen signals
+        self.game_screen.back_btn_clicked.connect(self.on_game_back_clicked)
+
     def on_play_clicked(self) -> None:
         """
         navigates from the title screen to the game mode selection screen.
@@ -136,6 +146,15 @@ class MainWindow(QMainWindow):
         logger.info("Back clicked on setup screen; returning to game mode selection")
         self.stack.setCurrentWidget(self.mode_screen)
 
+    def on_game_back_clicked(self) -> None:
+        """
+        navigates back from the game board screen to the game setup screen.
+
+        :return: none
+        """
+        logger.info("Back clicked on game screen; returning to setup screen")
+        self.stack.setCurrentWidget(self.setup_screen)
+
     def on_mode_selected(self, mode: int) -> None:
         """
         handles game mode selection, updates setup screen options, and navigates to setup.
@@ -153,7 +172,7 @@ class MainWindow(QMainWindow):
 
     def on_start_game(self, rows: int, cols: int, difficulty: str) -> None:
         """
-        handles the start game signal from the setup screen with chosen configuration parameters.
+        creates the board with the chosen dimensions, populates the game screen, and navigates to it.
 
         :param rows: number of rows for the game board
         :param cols: number of columns for the game board
@@ -169,8 +188,12 @@ class MainWindow(QMainWindow):
             cols,
             difficulty,
         )
-        # temporary debug print until main game board view is implemented
         print(
             f"Starting game: mode={mode_str} ({self.selected_mode}), "
             f"board={rows}x{cols}, difficulty={difficulty}"
         )
+
+        # create numpy board and populate game screen grid
+        board = create_board(rows, cols)
+        self.game_screen.setup_board(board)
+        self.stack.setCurrentWidget(self.game_screen)
