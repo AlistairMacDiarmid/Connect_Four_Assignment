@@ -22,16 +22,19 @@ def main() -> None:
     """
     # configure dedicated log file for gui sessions
     setup_log(log_file="logs/gui_game.log")
+    logger.info("==========================================")
     logger.info("NEW CONNECT FOUR GUI SESSION STARTED")
 
     # create the main qt application instance
     app = QApplication(sys.argv)
+    logger.info("QApplication instance created")
 
     # instantiate and display the main application window
     window = MainWindow()
     window.show()
+    logger.info("MainWindow displayed; entering Qt event loop")
 
     # start the qt event loop and exit cleanly on window close
     exit_code = app.exec()
-    logger.info("GUI session ended with exit code %d", exit_code)
+    logger.info("GUI session ended cleanly with exit code %d", exit_code)
     sys.exit(exit_code)

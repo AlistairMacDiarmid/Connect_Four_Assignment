@@ -34,18 +34,35 @@ QLabel#header_label {
     padding-bottom: 12px;
 }
 
-QLabel#key_header {
-    font-family: "Geist Pixel", "VT323", monospace;
-    font-size: 42px;
-    font-weight: bold;
-    color: #80ffdb;
-    padding-bottom: 12px;
+QLabel#colour_lbl {
+    font-family: "VT323", monospace;
+    font-size: 32px;
 }
 
-QLabel#blocked_cell_label {
-    font-family:"VT323", monospace;
-    font-size: 32px;
+QLabel#status_lbl {
+    font-family: "VT323", monospace;
+    font-size: 46px;
+    color: #80ffdb;
+    padding: 4px 0px;
+}
 
+QFrame#legend_swatch {
+    border: 1px solid black;
+    border-radius: 5px;
+    margin-top: 5px;
+    margin-left: 5px;
+}
+
+QFrame#legend_swatch[swatch_colour="red"] {
+    background-color: red;
+}
+
+QFrame#legend_swatch[swatch_colour="blue"] {
+    background-color: blue;
+}
+
+QFrame#legend_swatch[swatch_colour="yellow"] {
+    background-color: yellow;
 }
 
 QPushButton {
@@ -57,13 +74,6 @@ QPushButton {
     min-width: 220px;
     font-family: "VT323", "Consolas", monospace;
     font-size: 26px;
-}
-
-QPushButton#board_cell {
-    min-width: 0px;
-    min-height: 0px;
-    padding: 0px;
-    border-style: none;
 }
 
 QPushButton:hover {
@@ -81,6 +91,48 @@ QPushButton:disabled {
     background-color: #12131a;
     border-color: #5c6378;
     color: #5c6378;
+}
+
+/* game board cell buttons and dynamic state styling */
+
+QPushButton#board_cell {
+    min-width: 0px;
+    min-height: 0px;
+    padding: 0px;
+    border-style: none;
+    background-color: #1c1e2a;
+}
+
+QPushButton#board_cell[cell_state="empty_x"]:hover {
+    background-color: blue;
+}
+
+QPushButton#board_cell[cell_state="empty_o"]:hover {
+    background-color: yellow;
+}
+
+QPushButton#board_cell[cell_state="empty_disabled"]:hover {
+    background-color: #1c1e2a;
+}
+
+QPushButton#board_cell[cell_state="blocked"],
+QPushButton#board_cell[cell_state="blocked"]:hover {
+    background-color: red;
+}
+
+QPushButton#board_cell[cell_state="x"],
+QPushButton#board_cell[cell_state="x"]:hover {
+    background-color: blue;
+}
+
+QPushButton#board_cell[cell_state="o"],
+QPushButton#board_cell[cell_state="o"]:hover {
+    background-color: yellow;
+}
+
+QPushButton#board_cell[cell_state="win"],
+QPushButton#board_cell[cell_state="win"]:hover {
+    background-color: green;
 }
 
 QGroupBox {

@@ -46,7 +46,7 @@ class SetupScreen(QWidget):
         self.back_btn: QPushButton | None = None
         self.start_btn: QPushButton | None = None
         self.initUI()
-        logger.debug("SetupScreen UI initialised")
+        logger.info("SetupScreen initialised")
 
     def initUI(self) -> None:
         """
@@ -138,7 +138,7 @@ class SetupScreen(QWidget):
         is_ai_enabled = mode == 2
         self.ai_group.setEnabled(is_ai_enabled)
         logger.info(
-            "SetupScreen configured for mode %d (AI difficulty enabled: %s)",
+            "SetupScreen configured for mode %d (AI difficulty selector enabled: %s)",
             mode,
             is_ai_enabled,
         )
@@ -153,7 +153,7 @@ class SetupScreen(QWidget):
         cols = self.cols_spin.value()
         difficulty = "easy" if self.easy_cb.isChecked() else "medium"
         logger.info(
-            "Start clicked on SetupScreen: rows=%d, cols=%d, difficulty=%s",
+            "SetupScreen start_game triggered: rows=%d, cols=%d, difficulty=%s",
             rows,
             cols,
             difficulty,

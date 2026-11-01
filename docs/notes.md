@@ -30,6 +30,10 @@
 - change colour of the winning line game pieces to be bright green 
 - add column numbers to the bottom of the board to make it easier to read. ✔
 - add replay functionality via a prompt. 
+- add exit button once game is over 
+- add replay button when game is over
+- add the "key" elements to a QGroupBox
+- find out how to make buttons circular to get that original connect 4 feel.
 
 
 

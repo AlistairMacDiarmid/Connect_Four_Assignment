@@ -31,7 +31,7 @@ class GameModeSelectScreen(QWidget):
         self.pvai_btn: QPushButton | None = None
         self.pvp_btn: QPushButton | None = None
         self.initUI()
-        logger.debug("GameModeSelectScreen UI initialised")
+        logger.info("GameModeSelectScreen initialised")
 
     def initUI(self) -> None:
         """

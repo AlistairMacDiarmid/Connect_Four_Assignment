@@ -119,6 +119,44 @@ def check_win(board: np.ndarray, piece: str) -> bool:
     return False
 
 
+def get_winning_cells(board: np.ndarray, piece: str) -> list[tuple[int, int]]:
+    """
+    scans the board for 4 consecutive matching pieces and returns their (row, col) coordinates.
+
+    :param board: current 2d numpy array game board
+    :param piece: string character representing the player's game piece
+    :return: list of 4 (row, col) coordinate tuples if a win is found, otherwise an empty list
+    :rtype: list[tuple[int, int]]
+    """
+    rows, cols = board.shape
+
+    # check horizontal - uses range(cols - 3) so c+3 is always within the board bounds
+    for c in range(cols - 3):
+        for r in range(rows):
+            if all(board[r, c + i] == piece for i in range(4)):
+                return [(r, c + i) for i in range(4)]
+
+    # check vertical - uses range(rows - 3) so r+3 is always within the board bounds
+    for c in range(cols):
+        for r in range(rows - 3):
+            if all(board[r + i, c] == piece for i in range(4)):
+                return [(r + i, c) for i in range(4)]
+
+    # check back diagonals ( \ ) limits both rows and cols bounds
+    for c in range(cols - 3):
+        for r in range(rows - 3):
+            if all(board[r + i, c + i] == piece for i in range(4)):
+                return [(r + i, c + i) for i in range(4)]
+
+    # check forward diagonals ( / ) limits both rows and cols bounds
+    for c in range(cols - 3):
+        for r in range(3, rows):
+            if all(board[r - i, c + i] == piece for i in range(4)):
+                return [(r - i, c + i) for i in range(4)]
+
+    return []
+
+
 def drop_piece(board: np.ndarray, piece: str, col_index: int) -> bool:
     """
     simulates dropping a piece into the board down a specific column with gravity.

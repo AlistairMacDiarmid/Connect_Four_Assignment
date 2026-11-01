@@ -30,7 +30,7 @@ class TitleScreen(QWidget):
         self.exit_btn: QPushButton | None = None
         self.play_btn: QPushButton | None = None
         self.initUI()
-        logger.debug("TitleScreen UI initialised")
+        logger.info("TitleScreen initialised")
 
     def initUI(self) -> None:
         """

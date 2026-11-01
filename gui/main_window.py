@@ -6,15 +6,14 @@ manages top-level window configuration, font/stylesheet loading, stacked view na
 import logging
 from pathlib import Path
 
-from PyQt6 import QtCore
 from PyQt6.QtWidgets import QMainWindow, QStackedWidget, QApplication
-from PyQt6.QtGui import QIcon, QFontDatabase
+from PyQt6.QtGui import QFontDatabase
 
-from core.game_logic import create_board
 from gui.views.game_screen import GameScreen
 from gui.views.title_screen import TitleScreen
 from gui.views.gamemode_select_screen import GameModeSelectScreen
 from gui.views.game_setup_screen import SetupScreen
+from gui.controllers.game_controller import GameController
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +33,19 @@ class MainWindow(QMainWindow):
 
         # constrain maximum window size to a single monitor's geometry so it never spills onto a second screen
         screen = QApplication.primaryScreen()
-        if screen is not None:
-            self.setMaximumSize(screen.geometry().size())
+        screen_size = screen.geometry().size()
+        self.setMaximumSize(screen_size)
+        logger.info(
+            "Constrained MainWindow maximum size to (%dx%d)",
+            screen_size.width(),
+            screen_size.height(),
+        )
 
         self.showFullScreen()
 
         # load custom bundled fonts and external .qss stylesheet
-        self._load_custom_fonts()
-        self._load_stylesheet()
+        self.load_custom_fonts()
+        self.load_stylesheet()
 
         # default to player vs player (1) until changed in mode selection
         self.selected_mode: int = 1
@@ -50,11 +54,12 @@ class MainWindow(QMainWindow):
         self.stack: QStackedWidget = QStackedWidget()
         self.setCentralWidget(self.stack)
 
-        # instantiate screen views
+        # instantiate screen views and game controller
         self.title_screen: TitleScreen = TitleScreen()
         self.mode_screen: GameModeSelectScreen = GameModeSelectScreen()
         self.setup_screen: SetupScreen = SetupScreen()
         self.game_screen: GameScreen = GameScreen()
+        self.game_controller: GameController = GameController(self.game_screen)
 
         # register screens in the stacked widget
         self.stack.addWidget(self.title_screen)
@@ -64,21 +69,31 @@ class MainWindow(QMainWindow):
 
         self.connect_signals()
         logger.info(
-            "MainWindow initialised with title, mode select, setup, and game screens"
+            "MainWindow initialised with TitleScreen, GameModeSelectScreen, SetupScreen, and GameScreen"
         )
 
-    def _load_custom_fonts(self) -> None:
+    def load_custom_fonts(self) -> None:
         """
         loads all bundled true-type fonts from gui/assets/fonts into the qt font database.
 
         :return: none
         """
         fonts_dir = Path(__file__).parent / "assets" / "fonts"
-        for font_file in fonts_dir.rglob("*.ttf"):
-            QFontDatabase.addApplicationFont(str(font_file))
-        logger.info("Loaded custom fonts from %s", fonts_dir)
+        if not fonts_dir.exists():
+            logger.warning("Custom fonts directory not found at %s", fonts_dir)
+            return
 
-    def _load_stylesheet(self) -> None:
+        loaded_count = 0
+        for font_file in fonts_dir.rglob("*.ttf"):
+            font_id = QFontDatabase.addApplicationFont(str(font_file))
+            if font_id != -1:
+                loaded_count += 1
+            else:
+                logger.warning("Failed to load font file: %s", font_file)
+
+        logger.info("Loaded %d custom font file(s) from %s", loaded_count, fonts_dir)
+
+    def load_stylesheet(self) -> None:
         """
         loads and applies the external qss stylesheet from gui/assets/styles.qss to the main window.
 
@@ -87,7 +102,9 @@ class MainWindow(QMainWindow):
         style_path = Path(__file__).parent / "assets" / "styles.qss"
         if style_path.exists():
             self.setStyleSheet(style_path.read_text(encoding="utf-8"))
-            logger.info("Loaded stylesheet from %s", style_path)
+            logger.info("Loaded QSS stylesheet from %s", style_path)
+        else:
+            logger.warning("QSS stylesheet not found at %s", style_path)
 
     def connect_signals(self) -> None:
         """
@@ -109,6 +126,7 @@ class MainWindow(QMainWindow):
 
         # game screen signals
         self.game_screen.back_btn_clicked.connect(self.on_game_back_clicked)
+        logger.debug("Connected navigation signals for all views in MainWindow")
 
     def on_play_clicked(self) -> None:
         """
@@ -116,7 +134,7 @@ class MainWindow(QMainWindow):
 
         :return: none
         """
-        logger.info("Play clicked on title screen; navigating to game mode selection")
+        logger.info("Navigation: TitleScreen -> GameModeSelectScreen")
         self.stack.setCurrentWidget(self.mode_screen)
 
     def on_exit_clicked(self) -> None:
@@ -125,7 +143,7 @@ class MainWindow(QMainWindow):
 
         :return: none
         """
-        logger.info("Exit clicked on title screen; closing main window")
+        logger.info("Exit clicked on TitleScreen; closing application window")
         self.close()
 
     def on_mode_back_clicked(self) -> None:
@@ -134,7 +152,7 @@ class MainWindow(QMainWindow):
 
         :return: none
         """
-        logger.info("Back clicked on game mode screen; returning to title screen")
+        logger.info("Navigation: GameModeSelectScreen -> TitleScreen")
         self.stack.setCurrentWidget(self.title_screen)
 
     def on_setup_back_clicked(self) -> None:
@@ -143,7 +161,7 @@ class MainWindow(QMainWindow):
 
         :return: none
         """
-        logger.info("Back clicked on setup screen; returning to game mode selection")
+        logger.info("Navigation: SetupScreen -> GameModeSelectScreen")
         self.stack.setCurrentWidget(self.mode_screen)
 
     def on_game_back_clicked(self) -> None:
@@ -152,7 +170,7 @@ class MainWindow(QMainWindow):
 
         :return: none
         """
-        logger.info("Back clicked on game screen; returning to setup screen")
+        logger.info("Navigation: GameScreen -> SetupScreen (left active match)")
         self.stack.setCurrentWidget(self.setup_screen)
 
     def on_mode_selected(self, mode: int) -> None:
@@ -164,7 +182,11 @@ class MainWindow(QMainWindow):
         """
         self.selected_mode = mode
         mode_str = "Player vs Player" if mode == 1 else "Player vs Computer"
-        logger.info("Selected game mode: %s (mode=%d)", mode_str, mode)
+        logger.info(
+            "Navigation: GameModeSelectScreen -> SetupScreen (selected mode=%d: %s)",
+            mode,
+            mode_str,
+        )
 
         # enable or disable ai difficulty options based on selected game mode
         self.setup_screen.config_mode(mode)
@@ -181,19 +203,19 @@ class MainWindow(QMainWindow):
         """
         mode_str = "Player vs Player" if self.selected_mode == 1 else "Player vs Computer"
         logger.info(
-            "Starting game: mode=%s (%d), board=%dx%d, difficulty=%s",
+            "Navigation: SetupScreen -> GameScreen | Starting match: mode=%s (%d), board=%dx%d, difficulty=%s",
             mode_str,
             self.selected_mode,
             rows,
             cols,
             difficulty,
         )
-        print(
-            f"Starting game: mode={mode_str} ({self.selected_mode}), "
-            f"board={rows}x{cols}, difficulty={difficulty}"
-        )
 
-        # create numpy board and populate game screen grid
-        board = create_board(rows, cols)
-        self.game_screen.setup_board(board)
+        # start a new match via the game controller and switch to the game screen
+        self.game_controller.start_game(
+            mode=self.selected_mode,
+            rows=rows,
+            cols=cols,
+            difficulty=difficulty,
+        )
         self.stack.setCurrentWidget(self.game_screen)
