@@ -144,6 +144,11 @@ QGroupBox {
     min-width: 460px;
 }
 
+QGroupBox#key_group {
+    min-width: 0px;
+    padding: 16px 18px 14px 18px;
+}
+
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top center;

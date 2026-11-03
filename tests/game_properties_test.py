@@ -3,12 +3,14 @@ property-based tests for game properties using hypothesis.
 """
 
 import unittest
-import numpy as np
-from hypothesis import given, strategies as st
 
-from core.game_logic import create_board, random_cell_blocking, drop_piece, check_win
+
+import numpy as np
+from hypothesis import given, settings, strategies as st
+
+from core.game_logic import create_board, drop_piece, check_win, get_winning_cells
 # todo - test the ai agent
-from core.ai_agent import get_valid_locations, AIAgent
+from core.ai_agent import get_valid_locations, AIAgent, MCTSNode
 
 
 class BoardPropertiesTest(unittest.TestCase):
@@ -66,6 +68,53 @@ class BoardPropertiesTest(unittest.TestCase):
         self.assertGreaterEqual(blocked_count, 1)
         self.assertLessEqual(blocked_count, max_allowed)
 
+
+
+class ValidLocationsPropertyTest(unittest.TestCase):
+    """
+    property tests for get_valid_locations col discovery
+    """
+    @given(
+        rows=st.integers(min_value=6, max_value=15),
+        cols=st.integers(min_value=7, max_value=15),
+    )
+    def test_valid_locations_match_cols_with_empty_slots(self, rows: int, cols: int) -> None:
+        """
+        get_valid_locations must return the exact set of columns containing at least one "#"
+        :param rows: integer number of rows on the board
+        :param cols: integer number of columns on the board
+        :return:
+        """
+        board = create_board(rows, cols)
+        valid_cols = get_valid_locations(board)
+
+        for col in range(cols):
+            has_empty_space = "#" in board[:, col]
+            if has_empty_space:
+                self.assertIn(col, valid_cols)
+            else:
+                self.assertNotIn(col, valid_cols)
+
+    @given(
+        rows=st.integers(min_value=6, max_value=15),
+        cols=st.integers(min_value=7, max_value=15),
+        piece=st.sampled_from(["X", "O"]),
+    )
+    def test_full_col_excluded_from_valid_locations(self, rows: int, cols: int, piece: str) -> None:
+        """
+        a col with no "#" cells remaining must NEVER be included in valid locations
+        :param rows:
+        :param cols:
+        :param piece:
+        :return:
+        """
+        board = np.full((rows, cols), "#")
+        #fill the col with 0's so no empty space tokens are present
+        board[:,0] = piece
+
+        valid_cols = get_valid_locations(board)
+        self.assertNotIn(0, valid_cols)
+        self.assertEqual(len(valid_cols), cols-1)
 
 class GamePieceDroppingTest(unittest.TestCase):
     """
@@ -240,7 +289,217 @@ class WinConditionsTest(unittest.TestCase):
         self.assertTrue(check_win(board_neg, piece))
 
 
-# todo - add ai agent test
+    @given(
+        rows=st.integers(min_value=6, max_value=15),
+        cols=st.integers(min_value=7, max_value=15),
+        piece=st.sampled_from(["X", "O"]),
+    )
+    def test_get_winning_cells_returns_four_matching_coordinates(
+        self, rows: int, cols: int, piece: str
+    ) -> None:
+        """
+        when a win is present on the board, get_winning_cells must return 4 (row, col) coordinates
+        that all contain the winning piece.
+
+        :param rows: integer number of rows on the board
+        :param cols: integer number of columns on the board
+        :param piece: player piece character ('X' or 'O')
+        :return: none
+        """
+        board = np.full((rows, cols), "#")
+        r = rows // 2
+        for offset in range(4):
+            board[r, offset] = piece
+
+        winning_coords = get_winning_cells(board, piece)
+        self.assertEqual(len(winning_coords), 4)
+        for row_idx, col_idx in winning_coords:
+            self.assertEqual(board[row_idx, col_idx], piece)
+
+
+class MCTSPropertiesTest(unittest.TestCase):
+    """
+    properties testing for MCTS node expansion, terminal detection, and ucb1 child selection
+    """
+    @given(
+        rows=st.integers(min_value=6, max_value=15),
+        cols=st.integers(min_value=7, max_value=15),
+        next_piece=st.sampled_from(["X", "O"]),
+    )
+    def test_node_expand_creates_valid_child_without_altering_parent(
+            self, rows: int, cols: int, next_piece: str
+    ) -> None:
+        """
+        expanding a mcts node must shrink the untried moves by 1, add 1 child node and not alter the parent node
+        :param rows: integer number of rows on the board
+        :param cols: integer number of columns on the board
+        :param next_piece: player piece character dropped during expansion ('X' or 'O')
+        :return: none
+        """
+        board = create_board(rows, cols)
+        root = MCTSNode(board = board.copy(), parent = None, column=None, game_piece="X")
+        prior_parent_board = root.board.copy()
+        initial_untried_count = len(root.untried_moves)
+
+        if initial_untried_count == 0:
+            return
+
+        child = root.expand(next_piece)
+
+        #the parent board must remain unchanged
+        np.testing.assert_array_equal(prior_parent_board, root.board)
+        #check that the untried moves count has decreased by 1 and the children count increases by 1
+        self.assertEqual(len(root.untried_moves), initial_untried_count - 1)
+        self.assertEqual(len(root.children), 1)
+        self.assertIs(child.parent, root)
+        self.assertEqual(child.game_piece, next_piece)
+        #check if the child board has one fewer "#" than the parent board
+        self.assertEqual(int(np.count_nonzero(child.board == "#")), int(np.count_nonzero(root.board == "#")) - 1)
+
+    @given(
+        wins_a=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        wins_b=st.floats(min_value=15.0, max_value=25.0, allow_nan=False, allow_infinity=False),
+        visits=st.integers(min_value=25, max_value=100),
+    )
+    def test_best_child_selects_higher_win_rate_given_equal_visits(
+            self, wins_a: float, wins_b: float, visits: int
+    ) -> None:
+        """
+        when two child nodes have the same visit count, best_child must select the one with more wins.
+
+        :param wins_a: win score for child a
+        :param wins_b: win score for child b (strictly greater than wins_a)
+        :param visits: equal visit count assigned to both children
+        :return: none
+        """
+        board = np.full((6, 7), "#")
+        root = MCTSNode(board=board, parent=None, column=None, game_piece="X")
+        child_a = root.expand("O")
+        child_b = root.expand("O")
+
+        root.visits = visits * 2
+        child_a.visits = visits
+        child_b.visits = visits
+        child_a.wins = wins_a
+        child_b.wins = wins_b
+
+        chosen = root.best_child(c=1.414)
+        self.assertIs(chosen, child_b)
+
+
+class MCTSBackpropagationPropertiesTest(unittest.TestCase):
+    @given(
+        depth=st.integers(min_value=1, max_value=6),
+        winner=st.sampled_from(["X", "O", None]),
+    )
+    def test_backpropagate_updates_all_ancestors_correctly(
+            self, depth: int, winner: str | None
+    ) -> None:
+        """
+        backpropagate must increment visits by 1 for all ancestors and award 1.0, 0.5, or 0.0 wins.
+
+        :param depth: number of expanded levels in the chain from root to leaf
+        :param winner: simulation outcome ('X', 'O', or none for draw)
+        :return: none
+        """
+        board = np.full((6,7), "#")
+        agent = AIAgent(name="puter", game_piece="O", human_piece="X", difficulty="medium")
+
+        #build the chain of nodes of length depth+1
+        root = MCTSNode(board=board, parent = None, column = None, game_piece="X")
+        chain = [root]
+        current = root
+        piece = "O"
+        for _ in range(depth):
+            current = current.expand(piece)
+            chain.append(current)
+            piece = "X" if piece == "O" else "O"
+
+        leaf = chain[-1]
+        agent.backpropagate(leaf, winner)
+
+        for node in chain:
+            self.assertEqual(node.visits, 1)
+            if winner is None:
+                self.assertEqual(node.wins, 0.5)
+            elif winner == node.game_piece:
+                self.assertEqual(node.wins, 1.0)
+            else:
+                self.assertEqual(node.wins, 0.0)
+
+
+
+class AIMCTSPropertiesTest(unittest.TestCase):
+    @settings(max_examples = 25,  deadline = None)
+    @given(
+        rows=st.integers(min_value=6, max_value=12),
+        cols=st.integers(min_value=7, max_value=12),
+    )
+    def test_mcts_returns_valid_col_and_doesnt_mutate_board(self, rows: int, cols: int) -> None:
+        """
+        mcts_search must always return a playable column index without altering the input board
+        :param rows:
+        :param cols:
+        :return:
+        """
+        board = create_board(rows, cols)
+        valid_cols = get_valid_locations(board)
+        if not valid_cols:
+            return
+
+        board_state_snap = board.copy()
+        agent = AIAgent(name="computer", game_piece="O", human_piece="X", difficulty="medium", iterations = 50)
+
+        chosen_col = agent.mcts_search(board)
+
+        #check input board is not mutated
+        np.testing.assert_array_equal(board, board_state_snap)
+        #returned col must be a valid playable column
+        self.assertIn(chosen_col, valid_cols)
+
+
+    @settings(max_examples=20, deadline=None)
+    @given(
+        rows=st.integers(min_value=6, max_value=10),
+        cols=st.integers(min_value=7, max_value=10),
+        start_col=st.integers(min_value=0, max_value=3),
+    )
+    def test_mcts_finds_immediate_horizontal_winning_move(
+        self, rows: int, cols: int, start_col: int
+    ) -> None:
+        """
+        when the ai has 3 pieces in a horizontal row on the bottom with the 4th column open,
+        mcts must select the winning 4th column.
+
+        :param rows: integer number of rows on the board
+        :param cols: integer number of columns on the board
+        :param start_col: starting column index for the 3-in-a-row setup
+        :return: none
+        """
+        board = np.full((rows, cols), "#")
+        bottom_row = rows - 1
+
+        #place 3 of the AI's pieces ('O') next to each other on the bottom row
+        board[bottom_row, start_col] = "O"
+        board[bottom_row, start_col + 1] = "O"
+        board[bottom_row, start_col + 2] = "O"
+        winning_col = start_col + 3
+
+        # block the column to the left of start_col (if there is one) so winning_col is the unique winning move
+        if start_col > 0:
+            board[bottom_row, start_col - 1] = "!"
+
+        agent = AIAgent(
+            name="Computer",
+            game_piece="O",
+            human_piece="X",
+            difficulty="medium",
+            iterations=200,
+        )
+
+        chosen_col = agent.mcts_search(board)
+        self.assertEqual(chosen_col, winning_col)
+
 
 if __name__ == "__main__":
     unittest.main()

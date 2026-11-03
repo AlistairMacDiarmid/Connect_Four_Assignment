@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QFrame,
     QGridLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -19,9 +20,6 @@ from PyQt6.QtWidgets import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-
 
 
 class GameScreen(QWidget):
@@ -64,14 +62,22 @@ class GameScreen(QWidget):
         self.grid_layout.setSpacing(4)
         center_layout.addLayout(self.grid_layout, stretch=1)
 
-        # vertical layout for the right-hand side column holding the colour key and back button
+        # vertical layout for the right-hand side column holding the colour key groupbox and back button
         self.key_layout = QVBoxLayout()
         self.key_layout.setSpacing(8)
 
-        # add legend rows for blocked cell, player 1, and player 2 / computer
-        self.key_layout.addLayout(self.create_legend_row("red", "Blocked Cell"))
-        self.key_layout.addLayout(self.create_legend_row("blue", "Player 1"))
-        self.key_layout.addLayout(self.create_legend_row("yellow", "Player 2"))
+        # group box framing the colour legend rows at the top of the right-hand column
+        key_group = QGroupBox()
+        key_group.setObjectName("key_group")
+        key_group_layout = QVBoxLayout(key_group)
+        key_group_layout.setSpacing(10)
+
+        # add legend rows for blocked cell, player 1, and player 2 / computer inside the group box
+        key_group_layout.addLayout(self.create_legend_row("red", "Blocked Cell"))
+        key_group_layout.addLayout(self.create_legend_row("blue", "Player 1"))
+        key_group_layout.addLayout(self.create_legend_row("yellow", "Player 2"))
+
+        self.key_layout.addWidget(key_group)
 
         # push the back button to the bottom of the right-hand side column
         self.key_layout.addStretch(1)
