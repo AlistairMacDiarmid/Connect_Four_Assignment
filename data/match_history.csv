@@ -1,0 +1,2 @@
+timestamp,interface,game_mode,ai_difficulty,board_size,blocked_cells,winner,total_moves,move_history
+2026-11-03 12:18:00,CLI,PvP,N/A,6x7,1,player 1,7,1->2->1->2->1->2->1

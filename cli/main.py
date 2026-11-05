@@ -4,8 +4,6 @@ handle the game loop state, player turns, and rich-formatted terminal rendering.
 """
 
 import os
-import sys
-from pathlib import Path
 import subprocess
 from typing import Tuple
 
@@ -19,6 +17,7 @@ from core.ai_agent import AIAgent
 from core.game_logic import check_win, create_board
 import logging
 from core.logger import setup_log
+from core.data_export import export_match_data
 
 
 console = Console(force_terminal=True)
@@ -235,7 +234,7 @@ def display_board(board: np.ndarray, last_move: str | None = None) -> None:
             cell = board[row, col]
             if cell == "X":
                 formatted_cells.append(
-                    f"[bold medium_purple1]{cell}[/bold medium_purple1]"
+                    f"[bold dark_blue]{cell}[/bold dark_blue]"
                 )
             elif cell == "O":
                 formatted_cells.append(
@@ -251,8 +250,8 @@ def display_board(board: np.ndarray, last_move: str | None = None) -> None:
 
     # column numbers and divider at bottom of board display
     divider_str = " ".join(["-"] * cols)
-    grid_rows.append(Align.center(f"[dim cyan]{divider_str}[/dim cyan]"))
-    col_numbers = [f"[bold white]{c}[/bold white]" for c in range(1, cols + 1)]
+    grid_rows.append(Align.center(f"[bold orchid1]{divider_str}[/bold orchid1]"))
+    col_numbers = [f"[bold grey100]{c}[/bold grey100]" for c in range(1, cols + 1)]
     grid_rows.append(Align.center(" ".join(col_numbers)))
 
     board_panel_content = Group(info_text, "", *grid_rows)
@@ -270,31 +269,27 @@ def display_board(board: np.ndarray, last_move: str | None = None) -> None:
 def run_game_loop(
     board: np.ndarray, player1: Player | AIAgent, player2: Player | AIAgent
 ) -> None:
-    """
-    executes the alternating turn loop until a win or draw occurs.
-
-    renders the current board and last move at the start of each turn, prompts
-    the active player or ai to make a move, tracks total moves, and checks for
-    win or draw conditions after every turn.
-
-    :param board: 2d numpy array representing the game board
-    :param player1: player or aiagent instance representing the first player
-    :param player2: player or aiagent instance representing the second player
-    :return: None
-    """
     rows, cols = board.shape
 
     # calculate total playable cells by subtracting blocked cells ("!")
     max_possible_moves = (rows * cols) - int(np.count_nonzero(board == "!"))
     total_moves = 0
+    move_history: list[int] = []
     current_player = player1
     game_over = False
     last_move_txt = None
+
+    # determine mode and difficulty from player2 for data export
+    mode = 2 if isinstance(player2, AIAgent) else 1
+    difficulty = player2.difficulty if isinstance(player2, AIAgent) else "N/A"
 
     # alternating turn loop
     while not game_over:
         display_board(board, last_move_txt)
         col = current_player.play(board)
+
+        if col is not None:
+            move_history.append(col + 1)
 
         # format difficulty indicator if current player is an ai agent
         ai_difficulty = (
@@ -324,6 +319,16 @@ def run_game_loop(
                 console.print(
                     f"\n[bold cyan]{player_name} wins![/bold cyan]"
                 )
+                #export match data on win
+                export_match_data(
+                    interface="CLI",
+                    mode=mode,
+                    difficulty=difficulty,
+                    board=board,
+                    winner=current_player.get_name(),
+                    total_moves=total_moves,
+                    move_history=move_history,
+                )
                 game_over = True
                 break
 
@@ -332,6 +337,16 @@ def run_game_loop(
             logger.info("Game Over: Game ended in a draw after %d total moves", total_moves)
             display_board(board, last_move=last_move_txt)
             console.print("\n[cyan]it's a draw![/cyan]")
+            #export match data on draw
+            export_match_data(
+                interface="CLI",
+                mode=mode,
+                difficulty=difficulty,
+                board=board,
+                winner="Draw",
+                total_moves=total_moves,
+                move_history=move_history,
+            )
             game_over = True
             break
 
