@@ -11,6 +11,7 @@ from PyQt6.QtCore import QTimer
 from core.ai_agent import AIAgent, get_valid_locations
 from core.game_logic import check_win, create_board, drop_piece, get_winning_cells
 from gui.views.game_screen import GameScreen
+from core.data_export import export_match_data, load_recent_matches
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class GameController:
         self.max_moves: int = 0
         self.game_over: bool = False
         self.ai_agent: AIAgent | None = None
+        self.move_history: list[int] = []
 
         # listen for cell clicks
         self.game_screen.cell_clicked.connect(self.on_clicked_cell)
@@ -48,6 +50,7 @@ class GameController:
         self.mode = mode
         self.difficulty = difficulty
         self.board = create_board(rows, cols)
+        self.move_history = []
 
         # total playable slots is (total cell count - blocked cell count)
         blocked_cells = int(np.count_nonzero(self.board == "!"))
@@ -70,6 +73,7 @@ class GameController:
 
         # build the initial button grid and set opening turn text
         self.game_screen.setup_board(self.board, self.current_piece)
+        self.refresh_match_history()
         self.game_screen.set_status(
             "Player 1's Turn - Click a column to drop your piece"
         )
@@ -160,6 +164,7 @@ class GameController:
             return
 
         self.total_moves += 1
+        self.move_history.append(last_col + 1)
         player_name = self.current_player()
         last_move_msg = (
             f"{player_name} played column {last_col + 1} ({self.current_piece})"
@@ -179,6 +184,16 @@ class GameController:
                 winning_cells,
             )
             self.game_screen.set_status(f"{last_move_msg} - {player_name} Wins!")
+            export_match_data(
+                interface="GUI",
+                mode=self.mode,
+                difficulty=self.difficulty,
+                board=self.board,
+                winner=player_name,
+                total_moves=self.total_moves,
+                move_history=self.move_history,
+            )
+            self.refresh_match_history()
             return
 
         # check draw condition if no playable cells remain
@@ -191,6 +206,16 @@ class GameController:
                 self.max_moves,
             )
             self.game_screen.set_status(f"{last_move_msg} - It's a Draw!")
+            export_match_data(
+                interface="GUI",
+                mode=self.mode,
+                difficulty=self.difficulty,
+                board=self.board,
+                winner="Draw",
+                total_moves=self.total_moves,
+                move_history=self.move_history,
+            )
+            self.refresh_match_history()
             return
 
         # switch active piece for the next turn
@@ -246,3 +271,10 @@ class GameController:
             col + 1,
         )
         self.advance_turn(col)
+
+    def refresh_match_history(self) -> None:
+        """
+        refreshes the match history list widget with recent match summaries
+        """
+        recent_matches = load_recent_matches(limit = 10)
+        self.game_screen.update_match_history(recent_matches)

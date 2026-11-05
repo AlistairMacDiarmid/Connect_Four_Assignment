@@ -14,7 +14,7 @@ from rich.panel import Panel
 
 from core.player import Player
 from core.ai_agent import AIAgent
-from core.game_logic import check_win, create_board
+from core.game_logic import check_win, create_board, get_winning_cells
 import logging
 from core.logger import setup_log
 from core.data_export import export_match_data
@@ -199,15 +199,21 @@ def get_board_dimensions() -> Tuple[int, int]:
     return rows, cols
 
 
-def display_board(board: np.ndarray, last_move: str | None = None) -> None:
+def display_board(
+    board: np.ndarray,
+    last_move: str | None = None,
+    winning_cells: list[tuple[int, int]] | None = None,
+) -> None:
     """
     renders the numpy board array to the terminal using rich styling.
 
     clears the terminal screen, prints dimension details and the last played move
-    if provided, color-codes tokens and blocked cells, and displays column numbers.
+    if provided, color-codes tokens, blocked cells, and any winning line in bright green,
+    and displays column numbers.
 
     :param board: 2d numpy array representing the current game board
     :param last_move: optional description string of the most recent move
+    :param winning_cells: optional list of (row, col) coordinates forming the winning line
     :return: None
     """
     # clear the terminal so the game board updates smoothly
@@ -215,6 +221,7 @@ def display_board(board: np.ndarray, last_move: str | None = None) -> None:
     subprocess.run(command, shell=True)
 
     rows, cols = board.shape
+    winning_set = set(winning_cells) if winning_cells else set()
 
     info_txt_lines = [
         f"dimensions: [cyan]{rows} rows[/cyan] × [cyan]{cols} columns[/cyan]"
@@ -232,9 +239,13 @@ def display_board(board: np.ndarray, last_move: str | None = None) -> None:
         formatted_cells = []
         for col in range(cols):
             cell = board[row, col]
-            if cell == "X":
+            if (row, col) in winning_set:
                 formatted_cells.append(
-                    f"[bold dark_blue]{cell}[/bold dark_blue]"
+                    f"[bold bright_green]{cell}[/bold bright_green]"
+                )
+            elif cell == "X":
+                formatted_cells.append(
+                    f"[bold navy_blue]{cell}[/bold navy_blue]"
                 )
             elif cell == "O":
                 formatted_cells.append(
@@ -299,7 +310,7 @@ def run_game_loop(
         )
         col_num = col + 1 if col is not None else "?"
         piece_color = (
-            "medium_purple1"
+            "navy_blue"
             if current_player.game_piece == "X"
             else "bright_yellow"
         )
@@ -314,18 +325,26 @@ def run_game_loop(
         # check win condition once minimum 7 moves have occurred
         if total_moves >= 7:
             if check_win(board, current_player.game_piece):
-                logger.info("Game Over: %s won the game in %d total moves", player_name, total_moves)
-                display_board(board, last_move=last_move_txt)
-                console.print(
-                    f"\n[bold cyan]{player_name} wins![/bold cyan]"
+                winning_cells = get_winning_cells(board, current_player.game_piece)
+                logger.info(
+                    "Game Over: %s won the game in %d total moves | Winning cells: %s",
+                    player_name,
+                    total_moves,
+                    winning_cells,
                 )
-                #export match data on win
+                display_board(
+                    board, last_move=last_move_txt, winning_cells=winning_cells
+                )
+                console.print(
+                    f"\n[bold bright_green]{player_name} wins![/bold bright_green]"
+                )
+                # export match data on win
                 export_match_data(
                     interface="CLI",
                     mode=mode,
                     difficulty=difficulty,
                     board=board,
-                    winner=current_player.get_name(),
+                    winner=current_player.name,
                     total_moves=total_moves,
                     move_history=move_history,
                 )
@@ -337,7 +356,7 @@ def run_game_loop(
             logger.info("Game Over: Game ended in a draw after %d total moves", total_moves)
             display_board(board, last_move=last_move_txt)
             console.print("\n[cyan]it's a draw![/cyan]")
-            #export match data on draw
+            # export match data on draw
             export_match_data(
                 interface="CLI",
                 mode=mode,

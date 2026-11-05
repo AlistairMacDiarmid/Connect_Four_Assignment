@@ -25,6 +25,7 @@ COL_NAMES = [
     "move_history",
 ]
 
+
 def export_match_data(
     interface: str,
     mode: int,
@@ -59,7 +60,7 @@ def export_match_data(
 
     rows, cols = board.shape
     blocked_cells = int(np.count_nonzero(board == "!"))
-    mode_str  = "PvP" if mode == 1 else "PvC"
+    mode_str = "PvP" if mode == 1 else "PvC"
     ai_difficulty_str = difficulty if mode == 2 else "N/A"
     moves_str = "->".join(str(col) for col in move_history)
 
@@ -83,3 +84,29 @@ def export_match_data(
 
     logger.info("Exported match data to %s (winner=%s, moves=%d)", output_path, winner, total_moves)
     return output_path
+
+
+def load_recent_matches(
+    limit: int = 10, file_path: str = "data/match_history.csv"
+) -> list[dict[str, str]]:
+    """
+    loads the most recent matches from the match history file.
+
+    :param limit: max number of recent matches to load
+    :param file_path: relative or absolute path to the match history file
+    :return: list of match row dictionaries ordered from newest to oldest
+    :rtype: list[dict[str, str]]
+    """
+    input_path = Path(file_path)
+    if not input_path.is_absolute():
+        project_root = Path(__file__).resolve().parent.parent
+        input_path = project_root / input_path
+
+    if not input_path.exists():
+        return []
+
+    with input_path.open(mode="r", newline="", encoding="utf-8") as csv_file:
+        reader = csv.DictReader(csv_file)
+        rows = list(reader)
+
+    return list(reversed(rows[-limit:]))

@@ -23,7 +23,6 @@ class MainWindow(QMainWindow):
     top-level application window hosting a qstackedwidget to switch between views.
     handles navigation signals between the title, mode selection, game setup, and game board screens.
     """
-
     def __init__(self) -> None:
         """
         initialises the main window, loads fonts and stylesheet, creates view widgets, and wires up signals.
@@ -75,7 +74,6 @@ class MainWindow(QMainWindow):
     def load_custom_fonts(self) -> None:
         """
         loads all bundled true-type fonts from gui/assets/fonts into the qt font database.
-
         :return: none
         """
         fonts_dir = Path(__file__).parent / "assets" / "fonts"
@@ -96,7 +94,6 @@ class MainWindow(QMainWindow):
     def load_stylesheet(self) -> None:
         """
         loads and applies the external qss stylesheet from gui/assets/styles.qss to the main window.
-
         :return: none
         """
         style_path = Path(__file__).parent / "assets" / "styles.qss"
@@ -109,12 +106,11 @@ class MainWindow(QMainWindow):
     def connect_signals(self) -> None:
         """
         connects custom pyqt signals from child screens to navigation and handler slots.
-
         :return: none
         """
         # title screen signals
         self.title_screen.play_btn_clicked.connect(self.on_play_clicked)
-        self.title_screen.exit_btn_clicked.connect(self.on_exit_clicked)
+        self.title_screen.exit_btn_clicked.connect(lambda: self.on_exit_clicked("TitleScreen"))
 
         # game mode select signals
         self.mode_screen.mode_selected.connect(self.on_mode_selected)
@@ -126,30 +122,29 @@ class MainWindow(QMainWindow):
 
         # game screen signals
         self.game_screen.back_btn_clicked.connect(self.on_game_back_clicked)
+        self.game_screen.exit_btn_clicked.connect(lambda: self.on_exit_clicked("GameScreen"))
         logger.debug("Connected navigation signals for all views in MainWindow")
 
     def on_play_clicked(self) -> None:
         """
         navigates from the title screen to the game mode selection screen.
-
         :return: none
         """
         logger.info("Navigation: TitleScreen -> GameModeSelectScreen")
         self.stack.setCurrentWidget(self.mode_screen)
 
-    def on_exit_clicked(self) -> None:
+    def on_exit_clicked(self, source_screen: str = "TitleScreen") -> None:
         """
-        logs the exit request from the title screen and closes the main window.
-
+        logs the exit request from the given screen and closes the main window.
+        :param source_screen: name of the view that emitted the exit signal
         :return: none
         """
-        logger.info("Exit clicked on TitleScreen; closing application window")
+        logger.info("Exit clicked on %s; closing application window", source_screen)
         self.close()
 
     def on_mode_back_clicked(self) -> None:
         """
         navigates back from the game mode selection screen to the title screen.
-
         :return: none
         """
         logger.info("Navigation: GameModeSelectScreen -> TitleScreen")
@@ -158,7 +153,6 @@ class MainWindow(QMainWindow):
     def on_setup_back_clicked(self) -> None:
         """
         navigates back from the game setup screen to the game mode selection screen.
-
         :return: none
         """
         logger.info("Navigation: SetupScreen -> GameModeSelectScreen")
@@ -167,7 +161,6 @@ class MainWindow(QMainWindow):
     def on_game_back_clicked(self) -> None:
         """
         navigates back from the game board screen to the game setup screen.
-
         :return: none
         """
         logger.info("Navigation: GameScreen -> SetupScreen (left active match)")
@@ -176,7 +169,6 @@ class MainWindow(QMainWindow):
     def on_mode_selected(self, mode: int) -> None:
         """
         handles game mode selection, updates setup screen options, and navigates to setup.
-
         :param mode: integer representing the selected mode (1 for pvp, 2 for pvc)
         :return: none
         """
@@ -195,7 +187,6 @@ class MainWindow(QMainWindow):
     def on_start_game(self, rows: int, cols: int, difficulty: str) -> None:
         """
         creates the board with the chosen dimensions, populates the game screen, and navigates to it.
-
         :param rows: number of rows for the game board
         :param cols: number of columns for the game board
         :param difficulty: selected ai difficulty string ("easy" or "medium")

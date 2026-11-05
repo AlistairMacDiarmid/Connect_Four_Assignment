@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QWidget,
+    QListWidget,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class GameScreen(QWidget):
 
     cell_clicked = pyqtSignal(int, int)
     back_btn_clicked = pyqtSignal()
+    exit_btn_clicked = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """
@@ -67,7 +69,7 @@ class GameScreen(QWidget):
         self.key_layout.setSpacing(8)
 
         # group box framing the colour legend rows at the top of the right-hand column
-        key_group = QGroupBox()
+        key_group = QGroupBox("Key")
         key_group.setObjectName("key_group")
         key_group_layout = QVBoxLayout(key_group)
         key_group_layout.setSpacing(10)
@@ -79,15 +81,35 @@ class GameScreen(QWidget):
 
         self.key_layout.addWidget(key_group)
 
-        # push the back button to the bottom of the right-hand side column
-        self.key_layout.addStretch(1)
+        # group box displaying the recent match history from data/match_history.csv
+        history_group = QGroupBox("Recent Match History")
+        history_group.setObjectName("history_group")
+        history_group_layout = QVBoxLayout(history_group)
 
-        # navigation button in the side column to return to the game setup screen
+        self.history_list = QListWidget()
+        self.history_list.setObjectName("history_list")
+        self.history_list.setSelectionMode(QListWidget.SelectionMode.NoSelection)
+        self.history_list.setWordWrap(True)
+        history_group_layout.addWidget(self.history_list, stretch=1)
+        self.key_layout.addWidget(history_group, stretch=1)
+
+        # navigation buttons in the side column to return to setup or exit the application
+        nav_btn_layout = QHBoxLayout()
+        nav_btn_layout.setSpacing(10)
+
         self.back_btn: QPushButton = QPushButton("Back")
+        self.back_btn.setObjectName("back_nav_btn")
         self.back_btn.clicked.connect(self.back_btn_clicked.emit)
-        self.key_layout.addWidget(self.back_btn)
 
-        center_layout.addLayout(self.key_layout, stretch=0)
+        self.exit_btn: QPushButton = QPushButton("Exit")
+        self.exit_btn.setObjectName("side_nav_btn")
+        self.exit_btn.clicked.connect(self.exit_btn_clicked.emit)
+
+        nav_btn_layout.addWidget(self.back_btn)
+        nav_btn_layout.addWidget(self.exit_btn)
+        self.key_layout.addLayout(nav_btn_layout)
+
+        center_layout.addLayout(self.key_layout)
 
         logger.info("GameScreen initialised with board grid, colour key, and back button")
 
@@ -260,3 +282,35 @@ class GameScreen(QWidget):
         row.addWidget(colour_box, alignment=Qt.AlignmentFlag.AlignVCenter)
         row.addWidget(colour_lbl, alignment=Qt.AlignmentFlag.AlignVCenter)
         return row
+
+    def update_match_history(self, matches: list[dict[str, str]]) -> None:
+        """
+        populates the side panel list widget with recent match summaries.
+
+        :param matches: list of match dictionaries loaded from match_history.csv
+        :return: none
+        """
+        self.history_list.clear()
+
+        if not matches:
+            self.history_list.addItem("No matches played")
+            return
+
+        for match in matches:
+            mode = match.get("game_mode", "?")
+            board_size = match.get("board_size", "?")
+            winner = match.get("winner", "?")
+            moves = match.get("total_moves", "?")
+            outcome = (
+                f"Draw in {moves} moves"
+                if winner == "Draw"
+                else f"{winner} won in {moves} moves"
+            )
+            if mode == "PvC":
+                difficulty = match.get("ai_difficulty", "?")
+                summary = f"{mode} on {difficulty}\n{board_size} board\n{outcome}"
+            else:
+                summary = f"{mode}\n{board_size} board,\n{outcome}"
+            self.history_list.addItem(summary)
+
+        logger.debug("Populated recent match history list with %d item(s)", len(matches))

@@ -203,3 +203,31 @@ QCheckBox::indicator:disabled {
     border-color: #5c6378;
     background-color: #12131a;
 }
+
+
+QGroupBox#key_group,
+QGroupBox#history_group {
+    min-width: 0px;
+    max-width: 320px;
+    padding: 16px 18px 14px 18px;
+}
+
+QListWidget#history_list {
+    background-color: #12131a;
+    color: #64dfdf;
+    border: 1px solid #5c6378;
+    border-radius: 6px;
+    padding: 6px;
+    font-family: "VT323", "Consolas", monospace;
+    font-size: 22px;
+}
+
+QListWidget#history_list::item {
+    padding: 6px 4px;
+    border-bottom: 1px solid #1c1e2a;
+}
+
+QPushButton#side_nav_btn {
+    min-width: 0px;
+    padding: 10px 16px;
+}
