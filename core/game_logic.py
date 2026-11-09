@@ -3,8 +3,11 @@ game logic for connect 4
 handles mathematical grid operations, random cell blocking, gravity-based piece dropping, and win checks.
 """
 
+import logging
 import random
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def create_board(rows: int, cols: int) -> np.ndarray:
@@ -18,6 +21,8 @@ def create_board(rows: int, cols: int) -> np.ndarray:
     """
     board = np.full((rows, cols), "#")
     board = random_cell_blocking(board, block_char="!")
+    blocked_count = int(np.sum(board == "!"))
+    logger.info("Initialized board of size %dx%d with %d blocked cell(s)", rows, cols, blocked_count)
     return board
 
 
@@ -54,7 +59,7 @@ def random_cell_blocking(board: np.ndarray, block_char: str = "!") -> np.ndarray
     return board
 
 
-def check_win(board: np.ndarray, piece: str) -> bool:
+def check_win_loop(board: np.ndarray, piece: str) -> bool:
     """
     scans the board for a winning condition of 4 consecutive matching pieces.
 
@@ -100,7 +105,7 @@ def check_win(board: np.ndarray, piece: str) -> bool:
             ):
                 return True
 
-    # check forward diagonals ( \\ ) limits both rows and cols bounds
+    # check forward diagonals ( \ ) limits both rows and cols bounds
     for c in range(cols - 3):
         for r in range(3, rows):
             if (
@@ -112,6 +117,81 @@ def check_win(board: np.ndarray, piece: str) -> bool:
                 return True
 
     return False
+
+
+def check_win(board: np.ndarray, piece: str) -> bool:
+    """
+    optimised win check using numpy vectorised boolean array slicing.
+
+    evaluates horizontal, vertical, and both diagonals in compiled c without nested python loops.
+
+    :param board: the current 2d numpy array representing the game board
+    :param piece: string character representing the player's game piece
+    :return: true if a win condition is met, false otherwise
+    :rtype: bool
+    """
+
+    # create the grid of true/false values for the passed in game piece
+    mask = board == piece
+
+
+    # horizontal ( -- )
+    if np.any(mask[:, :-3] & mask[:, 1:-2] & mask[:, 2:-1] & mask[:, 3:]):
+        return True
+
+    # vertical ( | )
+    if np.any(mask[:-3, :] & mask[1:-2, :] & mask[2:-1, :] & mask[3:, :]):
+        return True
+
+    # back diagonal ( \ )
+    if np.any(mask[:-3, :-3] & mask[1:-2, 1:-2] & mask[2:-1, 2:-1] & mask[3:, 3:]):
+        return True
+
+    # forward diagonal ( / )
+    if np.any(mask[3:, :-3] & mask[2:-1, 1:-2] & mask[1:-2, 2:-1] & mask[:-3, 3:]):
+        return True
+
+    return False
+
+
+
+
+def get_winning_cells(board: np.ndarray, piece: str) -> list[tuple[int, int]]:
+    """
+    scans the board for 4 consecutive matching pieces and returns their (row, col) coordinates.
+
+    :param board: current 2d numpy array game board
+    :param piece: string character representing the player's game piece
+    :return: list of 4 (row, col) coordinate tuples if a win is found, otherwise an empty list
+    :rtype: list[tuple[int, int]]
+    """
+    rows, cols = board.shape
+
+    # check horizontal - uses range(cols - 3) so c+3 is always within the board bounds
+    for c in range(cols - 3):
+        for r in range(rows):
+            if all(board[r, c + i] == piece for i in range(4)):
+                return [(r, c + i) for i in range(4)]
+
+    # check vertical - uses range(rows - 3) so r+3 is always within the board bounds
+    for c in range(cols):
+        for r in range(rows - 3):
+            if all(board[r + i, c] == piece for i in range(4)):
+                return [(r + i, c) for i in range(4)]
+
+    # check back diagonals ( \ ) limits both rows and cols bounds
+    for c in range(cols - 3):
+        for r in range(rows - 3):
+            if all(board[r + i, c + i] == piece for i in range(4)):
+                return [(r + i, c + i) for i in range(4)]
+
+    # check forward diagonals ( / ) limits both rows and cols bounds
+    for c in range(cols - 3):
+        for r in range(3, rows):
+            if all(board[r - i, c + i] == piece for i in range(4)):
+                return [(r - i, c + i) for i in range(4)]
+
+    return []
 
 
 def drop_piece(board: np.ndarray, piece: str, col_index: int) -> bool:
@@ -133,7 +213,9 @@ def drop_piece(board: np.ndarray, piece: str, col_index: int) -> bool:
     for r in range(rows - 1, -1, -1):
         if board[r, col_index] == "#":
             board[r, col_index] = piece
+            logger.debug("Dropped piece '%s' at row %d, col %d", piece, r, col_index)
             return True
 
     # if no space is available, return false
+    logger.warning("Column %d is full; cannot drop piece '%s'", col_index + 1, piece)
     return False

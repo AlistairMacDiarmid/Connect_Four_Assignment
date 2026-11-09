@@ -3,10 +3,12 @@ player module
 defines the human player class. handles terminal i/o, input validation and game logic.
 """
 
+import logging
 import numpy as np
 from rich.console import Console
 from core.game_logic import drop_piece
 
+logger = logging.getLogger(__name__)
 console = Console(force_terminal=True)
 
 
@@ -65,6 +67,7 @@ class Player:
 
                 # ensure the column number is within the board's dimensions
                 if col_index < 0 or col_index >= cols:
+                    logger.warning("Player '%s' entered out-of-bounds column %d", self.name, col_input)
                     console.print(
                         "[bold red]this is an invalid column number, try again :)[/bold red]\n"
                     )
@@ -74,13 +77,16 @@ class Player:
                 success = drop_piece(board, self.game_piece, col_index)
 
                 if not success:
+                    logger.warning("Player '%s' attempted to play in full column %d", self.name, col_input)
                     console.print(
                         "[bold red]this column is full, try again :)[/bold red]\n"
                     )
                 else:
                     # if the piece was successfully dropped, return column index
+                    logger.info("Player '%s' placed piece '%s' in column %d", self.name, self.game_piece, col_input)
                     return col_index
             except ValueError:
+                logger.warning("Player '%s' entered non-integer input", self.name)
                 # catch input error when user enters non-integer values
                 console.print(
                     "[bold red]invalid input! please enter a valid whole number.[/bold red]\n"

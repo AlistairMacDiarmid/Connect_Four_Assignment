@@ -4,8 +4,6 @@ handle the game loop state, player turns, and rich-formatted terminal rendering.
 """
 
 import os
-import sys
-from pathlib import Path
 import subprocess
 from typing import Tuple
 
@@ -16,10 +14,14 @@ from rich.panel import Panel
 
 from core.player import Player
 from core.ai_agent import AIAgent
-from core.game_logic import check_win, create_board
+from core.game_logic import check_win, create_board, get_winning_cells
+import logging
+from core.logger import setup_log
+from core.data_export import export_match_data
+
 
 console = Console(force_terminal=True)
-
+logger = logging.getLogger(__name__)
 
 def intro_text() -> None:
     """
@@ -197,15 +199,21 @@ def get_board_dimensions() -> Tuple[int, int]:
     return rows, cols
 
 
-def display_board(board: np.ndarray, last_move: str | None = None) -> None:
+def display_board(
+    board: np.ndarray,
+    last_move: str | None = None,
+    winning_cells: list[tuple[int, int]] | None = None,
+) -> None:
     """
     renders the numpy board array to the terminal using rich styling.
 
     clears the terminal screen, prints dimension details and the last played move
-    if provided, color-codes tokens and blocked cells, and displays column numbers.
+    if provided, color-codes tokens, blocked cells, and any winning line in bright green,
+    and displays column numbers.
 
     :param board: 2d numpy array representing the current game board
     :param last_move: optional description string of the most recent move
+    :param winning_cells: optional list of (row, col) coordinates forming the winning line
     :return: None
     """
     # clear the terminal so the game board updates smoothly
@@ -213,6 +221,7 @@ def display_board(board: np.ndarray, last_move: str | None = None) -> None:
     subprocess.run(command, shell=True)
 
     rows, cols = board.shape
+    winning_set = set(winning_cells) if winning_cells else set()
 
     info_txt_lines = [
         f"dimensions: [cyan]{rows} rows[/cyan] × [cyan]{cols} columns[/cyan]"
@@ -230,9 +239,13 @@ def display_board(board: np.ndarray, last_move: str | None = None) -> None:
         formatted_cells = []
         for col in range(cols):
             cell = board[row, col]
-            if cell == "X":
+            if (row, col) in winning_set:
                 formatted_cells.append(
-                    f"[bold medium_purple1]{cell}[/bold medium_purple1]"
+                    f"[bold bright_green]{cell}[/bold bright_green]"
+                )
+            elif cell == "X":
+                formatted_cells.append(
+                    f"[bold navy_blue]{cell}[/bold navy_blue]"
                 )
             elif cell == "O":
                 formatted_cells.append(
@@ -248,8 +261,8 @@ def display_board(board: np.ndarray, last_move: str | None = None) -> None:
 
     # column numbers and divider at bottom of board display
     divider_str = " ".join(["-"] * cols)
-    grid_rows.append(Align.center(f"[dim cyan]{divider_str}[/dim cyan]"))
-    col_numbers = [f"[bold white]{c}[/bold white]" for c in range(1, cols + 1)]
+    grid_rows.append(Align.center(f"[bold orchid1]{divider_str}[/bold orchid1]"))
+    col_numbers = [f"[bold grey100]{c}[/bold grey100]" for c in range(1, cols + 1)]
     grid_rows.append(Align.center(" ".join(col_numbers)))
 
     board_panel_content = Group(info_text, "", *grid_rows)
@@ -268,30 +281,37 @@ def run_game_loop(
     board: np.ndarray, player1: Player | AIAgent, player2: Player | AIAgent
 ) -> None:
     """
-    executes the alternating turn loop until a win or draw occurs.
+    executes the main alternating turn loop until a player wins or the board is full.
 
-    renders the current board and last move at the start of each turn, prompts
-    the active player or ai to make a move, tracks total moves, and checks for
-    win or draw conditions after every turn.
+    handles board rendering, player and ai move execution, win/draw detection,
+    winning cell highlighting, and csv match data export.
 
     :param board: 2d numpy array representing the game board
-    :param player1: player or aiagent instance representing the first player
-    :param player2: player or aiagent instance representing the second player
-    :return: None
+    :param player1: human player instance for player 1 ('X')
+    :param player2: human player or ai agent instance for player 2 ('O')
+    :return: none
     """
     rows, cols = board.shape
 
     # calculate total playable cells by subtracting blocked cells ("!")
     max_possible_moves = (rows * cols) - int(np.count_nonzero(board == "!"))
     total_moves = 0
+    move_history: list[int] = []
     current_player = player1
     game_over = False
     last_move_txt = None
+
+    # determine mode and difficulty from player2 for data export
+    mode = 2 if isinstance(player2, AIAgent) else 1
+    difficulty = player2.difficulty if isinstance(player2, AIAgent) else "N/A"
 
     # alternating turn loop
     while not game_over:
         display_board(board, last_move_txt)
         col = current_player.play(board)
+
+        if col is not None:
+            move_history.append(col + 1)
 
         # format difficulty indicator if current player is an ai agent
         ai_difficulty = (
@@ -301,7 +321,7 @@ def run_game_loop(
         )
         col_num = col + 1 if col is not None else "?"
         piece_color = (
-            "medium_purple1"
+            "navy_blue"
             if current_player.game_piece == "X"
             else "bright_yellow"
         )
@@ -316,17 +336,47 @@ def run_game_loop(
         # check win condition once minimum 7 moves have occurred
         if total_moves >= 7:
             if check_win(board, current_player.game_piece):
-                display_board(board, last_move=last_move_txt)
+                winning_cells = get_winning_cells(board, current_player.game_piece)
+                logger.info(
+                    "Game Over: %s won the game in %d total moves | Winning cells: %s",
+                    player_name,
+                    total_moves,
+                    winning_cells,
+                )
+                display_board(
+                    board, last_move=last_move_txt, winning_cells=winning_cells
+                )
                 console.print(
-                    f"\n[bold cyan]{player_name} wins![/bold cyan]"
+                    f"\n[bold bright_green]{player_name} wins![/bold bright_green]"
+                )
+                # export match data on win
+                export_match_data(
+                    interface="CLI",
+                    mode=mode,
+                    difficulty=difficulty,
+                    board=board,
+                    winner=current_player.name,
+                    total_moves=total_moves,
+                    move_history=move_history,
                 )
                 game_over = True
                 break
 
         # check draw condition if all playable cells are filled
         if total_moves >= max_possible_moves:
+            logger.info("Game Over: Game ended in a draw after %d total moves", total_moves)
             display_board(board, last_move=last_move_txt)
             console.print("\n[cyan]it's a draw![/cyan]")
+            # export match data on draw
+            export_match_data(
+                interface="CLI",
+                mode=mode,
+                difficulty=difficulty,
+                board=board,
+                winner="Draw",
+                total_moves=total_moves,
+                move_history=move_history,
+            )
             game_over = True
             break
 
@@ -344,17 +394,23 @@ def main() -> None:
 
     :return: None
     """
+    setup_log()
+    logger.info("NEW CONNECT FOUR SESSION STARTED")
     intro_text()
     mode = get_game_mode()
+    mode_name = "Player vs Player" if mode == 1 else "Player vs Computer"
+    logger.info("Selected game mode: %s", mode_name)
 
     ai_difficulty = "medium"
     if mode == 2:
         ai_difficulty = get_ai_difficulty()
+        logger.info("Selected AI difficulty: %s", ai_difficulty)
 
     rows, cols = get_board_dimensions()
+    logger.info("Board dimensions chosen: %dx%d", rows, cols)
     board = create_board(rows, cols)
 
-    # initialize players based on chosen game mode
+    # initialise players based on chosen game mode
     if mode == 1:
         player1 = Player(name="player 1", game_piece="X")
         player2 = Player(name="player 2", game_piece="O")

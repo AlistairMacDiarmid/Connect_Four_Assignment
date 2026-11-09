@@ -1,5 +1,15 @@
 # Connect Four Assignment Notes
+---
 
+## Overview 
+
+### Packages
+
+- **Python 3**
+- **NumPy (`numpy`)**
+- **Rich (`rich`)**
+- **PyQt6 (`PyQt6`)**
+- **Hypothesis (`hypothesis`)**:
 
 
 
@@ -27,9 +37,11 @@
 #### TODO:
 - when the computer is playing their turn, no info is displayed informing the player, add a message to the terminal the computer is playing their turn
 - add a message to the top of the board of the most recent move for both the player and the computers moves 
-- change colour of the winning line game pieces to be bright green 
-- add column numbers to the bottom of the board to make it easier to read. ✔
+- change colour of the winning line game pieces to be bright green  - done for gui need to do it for cli
 - add replay functionality via a prompt. 
+- add exit button once game is over 
+- add replay button when game is over
+- find out how to make buttons circular to get that original connect 4 feel.
 
 
 
@@ -57,6 +69,13 @@ for every node in the ancestory path.
 After all iterations (after n simulated practice games) are complete, the AI ignores the UCB1 score and looks directly at the children attached to the root node, and picks the 
 column with the highest visit counts – This column is picked as its survived the most simulated stress tests.
 
+
+
+
+
+
+
+
 ## References & Resources
 
 For Monte Carlo Tree Search Implementation:
@@ -72,6 +91,7 @@ For Monte Carlo Tree Search Implementation:
 
 # Hypothesis Testing
 
+https://hypothesis.readthedocs.io/en/latest/tutorial/builtin-strategies.html
 
 
 
@@ -80,6 +100,11 @@ For Monte Carlo Tree Search Implementation:
 
 
 
+
+
+Optimisation
+
+https://medium.com/@amit25173/what-is-a-numpy-mask-and-why-use-it-cb567e77fb7f
 
 
 ##### Random Tid Bits
