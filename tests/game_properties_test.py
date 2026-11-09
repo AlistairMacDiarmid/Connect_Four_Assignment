@@ -8,8 +8,7 @@ import unittest
 import numpy as np
 from hypothesis import given, settings, strategies as st
 
-from core.game_logic import create_board, drop_piece, check_win, get_winning_cells
-# todo - test the ai agent
+from core.game_logic import create_board, drop_piece, check_win, check_win_loop, get_winning_cells
 from core.ai_agent import get_valid_locations, AIAgent, MCTSNode
 
 
@@ -72,7 +71,7 @@ class BoardPropertiesTest(unittest.TestCase):
 
 class ValidLocationsPropertyTest(unittest.TestCase):
     """
-    property tests for get_valid_locations col discovery
+    property tests for get_valid_locations col discovery.
     """
     @given(
         rows=st.integers(min_value=6, max_value=15),
@@ -80,10 +79,11 @@ class ValidLocationsPropertyTest(unittest.TestCase):
     )
     def test_valid_locations_match_cols_with_empty_slots(self, rows: int, cols: int) -> None:
         """
-        get_valid_locations must return the exact set of columns containing at least one "#"
+        get_valid_locations must return the exact set of columns containing at least one "#".
+
         :param rows: integer number of rows on the board
         :param cols: integer number of columns on the board
-        :return:
+        :return: none
         """
         board = create_board(rows, cols)
         valid_cols = get_valid_locations(board)
@@ -102,14 +102,15 @@ class ValidLocationsPropertyTest(unittest.TestCase):
     )
     def test_full_col_excluded_from_valid_locations(self, rows: int, cols: int, piece: str) -> None:
         """
-        a col with no "#" cells remaining must NEVER be included in valid locations
-        :param rows:
-        :param cols:
-        :param piece:
-        :return:
+        a col with no "#" cells remaining must never be included in valid locations.
+
+        :param rows: integer number of rows on the board
+        :param cols: integer number of columns on the board
+        :param piece: player piece character ('X' or 'O')
+        :return: none
         """
         board = np.full((rows, cols), "#")
-        #fill the col with 0's so no empty space tokens are present
+        # fill the col with pieces so no empty space tokens are present
         board[:,0] = piece
 
         valid_cols = get_valid_locations(board)
@@ -316,10 +317,37 @@ class WinConditionsTest(unittest.TestCase):
         for row_idx, col_idx in winning_coords:
             self.assertEqual(board[row_idx, col_idx], piece)
 
+    @given(
+        rows=st.integers(min_value=6, max_value=15),
+        cols=st.integers(min_value=7, max_value=15),
+        piece=st.sampled_from(["X", "O"]),
+        moves=st.lists(st.integers(min_value=0, max_value=14), min_size=0, max_size=30),
+    )
+    def test_vectorized_check_win_matches_loop_baseline(
+        self, rows: int, cols: int, piece: str, moves: list[int]
+    ) -> None:
+        """
+        the optimised vectorised check_win must always return the exact same result
+        as the baseline loop-based check_win_loop on any board state.
+
+        :param rows: integer number of rows on the board
+        :param cols: integer number of columns on the board
+        :param piece: player piece character ('X' or 'O')
+        :param moves: list of random column indices to drop pieces into
+        :return: none
+        """
+        board = create_board(rows, cols)
+        current_piece = "X"
+        for col in moves:
+            drop_piece(board, current_piece, col % cols)
+            current_piece = "O" if current_piece == "X" else "X"
+
+        self.assertEqual(check_win(board, piece), check_win_loop(board, piece))
+
 
 class MCTSPropertiesTest(unittest.TestCase):
     """
-    properties testing for MCTS node expansion, terminal detection, and ucb1 child selection
+    properties testing for mcts node expansion, terminal detection, and ucb1 child selection.
     """
     @given(
         rows=st.integers(min_value=6, max_value=15),
@@ -388,6 +416,9 @@ class MCTSPropertiesTest(unittest.TestCase):
 
 
 class MCTSBackpropagationPropertiesTest(unittest.TestCase):
+    """
+    property tests for mcts backpropagation across ancestor node chains.
+    """
     @given(
         depth=st.integers(min_value=1, max_value=6),
         winner=st.sampled_from(["X", "O", None]),
@@ -430,6 +461,9 @@ class MCTSBackpropagationPropertiesTest(unittest.TestCase):
 
 
 class AIMCTSPropertiesTest(unittest.TestCase):
+    """
+    property tests for end-to-end mcts search validity and immediate tactical win detection.
+    """
     @settings(max_examples = 25,  deadline = None)
     @given(
         rows=st.integers(min_value=6, max_value=12),
@@ -437,10 +471,11 @@ class AIMCTSPropertiesTest(unittest.TestCase):
     )
     def test_mcts_returns_valid_col_and_doesnt_mutate_board(self, rows: int, cols: int) -> None:
         """
-        mcts_search must always return a playable column index without altering the input board
-        :param rows:
-        :param cols:
-        :return:
+        mcts_search must always return a playable column index without altering the input board.
+
+        :param rows: integer number of rows on the board
+        :param cols: integer number of columns on the board
+        :return: none
         """
         board = create_board(rows, cols)
         valid_cols = get_valid_locations(board)
@@ -479,7 +514,7 @@ class AIMCTSPropertiesTest(unittest.TestCase):
         board = np.full((rows, cols), "#")
         bottom_row = rows - 1
 
-        #place 3 of the AI's pieces ('O') next to each other on the bottom row
+        # place 3 of the ai's pieces ('O') next to each other on the bottom row
         board[bottom_row, start_col] = "O"
         board[bottom_row, start_col + 1] = "O"
         board[bottom_row, start_col + 2] = "O"

@@ -59,7 +59,7 @@ def random_cell_blocking(board: np.ndarray, block_char: str = "!") -> np.ndarray
     return board
 
 
-def check_win(board: np.ndarray, piece: str) -> bool:
+def check_win_loop(board: np.ndarray, piece: str) -> bool:
     """
     scans the board for a winning condition of 4 consecutive matching pieces.
 
@@ -105,7 +105,7 @@ def check_win(board: np.ndarray, piece: str) -> bool:
             ):
                 return True
 
-    # check forward diagonals ( \\ ) limits both rows and cols bounds
+    # check forward diagonals ( \ ) limits both rows and cols bounds
     for c in range(cols - 3):
         for r in range(3, rows):
             if (
@@ -117,6 +117,43 @@ def check_win(board: np.ndarray, piece: str) -> bool:
                 return True
 
     return False
+
+
+def check_win(board: np.ndarray, piece: str) -> bool:
+    """
+    optimised win check using numpy vectorised boolean array slicing.
+
+    evaluates horizontal, vertical, and both diagonals in compiled c without nested python loops.
+
+    :param board: the current 2d numpy array representing the game board
+    :param piece: string character representing the player's game piece
+    :return: true if a win condition is met, false otherwise
+    :rtype: bool
+    """
+
+    # create the grid of true/false values for the passed in game piece
+    mask = board == piece
+
+
+    # horizontal ( -- )
+    if np.any(mask[:, :-3] & mask[:, 1:-2] & mask[:, 2:-1] & mask[:, 3:]):
+        return True
+
+    # vertical ( | )
+    if np.any(mask[:-3, :] & mask[1:-2, :] & mask[2:-1, :] & mask[3:, :]):
+        return True
+
+    # back diagonal ( \ )
+    if np.any(mask[:-3, :-3] & mask[1:-2, 1:-2] & mask[2:-1, 2:-1] & mask[3:, 3:]):
+        return True
+
+    # forward diagonal ( / )
+    if np.any(mask[3:, :-3] & mask[2:-1, 1:-2] & mask[1:-2, 2:-1] & mask[:-3, 3:]):
+        return True
+
+    return False
+
+
 
 
 def get_winning_cells(board: np.ndarray, piece: str) -> list[tuple[int, int]]:

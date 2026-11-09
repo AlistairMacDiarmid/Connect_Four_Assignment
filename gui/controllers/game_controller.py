@@ -23,6 +23,12 @@ class GameController:
     """
 
     def __init__(self, game_screen: GameScreen) -> None:
+        """
+        initialises the game controller with default match state and connects view signals.
+
+        :param game_screen: the gamescreen view instance managed by this controller
+        :return: none
+        """
         self.game_screen: GameScreen = game_screen
         self.board: np.ndarray | None = None
         self.mode: int = 1
@@ -41,10 +47,11 @@ class GameController:
     def start_game(self, mode: int, rows: int, cols: int, difficulty: str) -> None:
         """
         creates a fresh board, resets the counters, and initialises the game screen grid.
+
         :param mode: 1 for player vs player, 2 for player vs computer
         :param rows: number of board rows
         :param cols: number of board columns
-        :param difficulty: ai difficulty level ('easy', 'medium', or 'hard')
+        :param difficulty: ai difficulty level ('easy' or 'medium')
         :return: none
         """
         self.mode = mode
@@ -184,6 +191,8 @@ class GameController:
                 winning_cells,
             )
             self.game_screen.set_status(f"{last_move_msg} - {player_name} Wins!")
+            self.game_screen.show_game_over_popup(f"{player_name} Wins!")
+
             export_match_data(
                 interface="GUI",
                 mode=self.mode,
@@ -216,6 +225,7 @@ class GameController:
                 move_history=self.move_history,
             )
             self.refresh_match_history()
+            self.game_screen.show_game_over_popup(f"Game Over: It's a Draw!")
             return
 
         # switch active piece for the next turn
@@ -274,7 +284,10 @@ class GameController:
 
     def refresh_match_history(self) -> None:
         """
-        refreshes the match history list widget with recent match summaries
+        refreshes the match history list widget with recent match summaries.
+
+        :return: none
         """
         recent_matches = load_recent_matches(limit = 10)
         self.game_screen.update_match_history(recent_matches)
+

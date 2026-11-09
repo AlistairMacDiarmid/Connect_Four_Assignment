@@ -102,6 +102,9 @@ https://hypothesis.readthedocs.io/en/latest/tutorial/builtin-strategies.html
 
 
 
+Optimisation
+
+https://medium.com/@amit25173/what-is-a-numpy-mask-and-why-use-it-cb567e77fb7f
 
 
 ##### Random Tid Bits

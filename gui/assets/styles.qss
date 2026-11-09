@@ -231,3 +231,10 @@ QPushButton#side_nav_btn {
     min-width: 0px;
     padding: 10px 16px;
 }
+
+QMessageBox#game_over_popup QLabel{
+    font-family: "VT323", "Consolas", monospace;
+    font-size:64px;
+    color:green;
+}
+

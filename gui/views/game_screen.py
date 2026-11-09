@@ -17,11 +17,10 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QWidget,
-    QListWidget,
+    QListWidget, QMessageBox,
 )
 
 logger = logging.getLogger(__name__)
-
 
 class GameScreen(QWidget):
     """
@@ -314,3 +313,24 @@ class GameScreen(QWidget):
             self.history_list.addItem(summary)
 
         logger.debug("Populated recent match history list with %d item(s)", len(matches))
+
+    def show_game_over_popup(self, message: str) -> None:
+        """
+        displays a popup dialog in the center of the screen with the win/draw message.
+
+        :param message: the text to display in the popup
+        :return: none
+        """
+        msg_box = QMessageBox(self)
+        msg_box.setObjectName("game_over_popup")
+        msg_box.setWindowTitle("Game Over")
+        msg_box.setText(message)
+        msg_box.setIcon(QMessageBox.Icon.NoIcon)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        ok_btn = msg_box.button(QMessageBox.StandardButton.Ok)
+        if ok_btn:
+            ok_btn.setStyleSheet(f"min-width:360px;")
+
+        # calling exec() blocks the thread until the user dismisses the popup
+        msg_box.exec()
+        logger.debug("Displayed game over popup with message: '%s'", message)

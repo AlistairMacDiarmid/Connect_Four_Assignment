@@ -135,6 +135,9 @@ class MCTSNode:
                 return child
 
         def ucb(child: MCTSNode) -> float:
+            """
+            calculates the ucb1 score for a given child node.
+            """
             exploit = child.wins / child.visits
             explore = c * math.sqrt(math.log(self.visits) / child.visits)
             return exploit + explore

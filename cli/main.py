@@ -280,6 +280,17 @@ def display_board(
 def run_game_loop(
     board: np.ndarray, player1: Player | AIAgent, player2: Player | AIAgent
 ) -> None:
+    """
+    executes the main alternating turn loop until a player wins or the board is full.
+
+    handles board rendering, player and ai move execution, win/draw detection,
+    winning cell highlighting, and csv match data export.
+
+    :param board: 2d numpy array representing the game board
+    :param player1: human player instance for player 1 ('X')
+    :param player2: human player or ai agent instance for player 2 ('O')
+    :return: none
+    """
     rows, cols = board.shape
 
     # calculate total playable cells by subtracting blocked cells ("!")
